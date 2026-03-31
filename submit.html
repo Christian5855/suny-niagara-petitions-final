@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Petition — SUNY Niagara</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .submit-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 60px;
+      padding: 56px 0 80px;
+    }
+
+    .submit-card {
+      background: var(--white);
+      padding: 40px;
+      border-top: 4px solid var(--red);
+    }
+
+    .submit-card h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .submit-card p {
+      font-size: 14px;
+      color: var(--ink-light);
+      margin-bottom: 36px;
+    }
+
+    .guidelines {
+      background: var(--bg-dark);
+      padding: 28px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .guidelines h4 {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-bottom: 14px;
+      color: var(--ink-mid);
+    }
+
+    .guidelines ul {
+      padding-left: 18px;
+      color: var(--ink-mid);
+    }
+
+    .guidelines li { margin-bottom: 8px; }
+
+    .char-count {
+      font-size: 12px;
+      color: var(--ink-light);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .submit-layout { grid-template-columns: 1fr; gap: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">SUNY <span>Niagara</span> Petitions</a>
+  <ul class="nav-links">
+    <li><a href="index.html">All Petitions</a></li>
+    <li><a href="submit.html" class="active">Submit a Petition</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <div class="container">
+    <h1>Submit a<br><em>Petition</em></h1>
+    <p>Have a concern or a cause worth rallying the student body around? Put it in writing and let your peers decide.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="submit-layout">
+
+    <div class="submit-card fade-in">
+      <h2>New Petition</h2>
+      <p>All fields are required. Your petition will be published immediately.</p>
+      <div id="submit-alert"></div>
+
+      <div class="form-group">
+        <label for="title">Petition Title</label>
+        <input type="text" id="title" placeholder="e.g. Extend Library Hours on Weekends" maxlength="120" oninput="updateCount('title','title-count',120)">
+        <div class="char-count"><span id="title-count">0</span>/120</div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" rows="7" placeholder="Explain the issue, why it matters, and what you want the administration to do..." maxlength="2000" oninput="updateCount('description','desc-count',2000)"></textarea>
+        <div class="char-count"><span id="desc-count">0</span>/2000</div>
+      </div>
+
+      <div class="form-group">
+        <label for="goal">Signature Goal</label>
+        <input type="number" id="goal" value="100" min="10" max="5000" placeholder="100">
+        <p style="font-size:12px;color:var(--ink-light);margin-top:6px;margin-bottom:0;">How many signatures are you aiming for?</p>
+      </div>
+
+      <div class="form-group">
+        <label for="submitter-name">Your Name</label>
+        <input type="text" id="submitter-name" placeholder="Your full name" maxlength="100">
+      </div>
+
+      <div class="form-group">
+        <label for="submitter-email">Your Email</label>
+        <input type="email" id="submitter-email" placeholder="your@email.com">
+        <p style="font-size:12px;color:var(--ink-light);margin-top:6px;margin-bottom:0;">You'll be automatically counted as the first signature.</p>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:16px;" id="submit-btn" onclick="submitPetition()">
+        Publish Petition
+      </button>
+    </div>
+
+    <div class="fade-in" style="animation-delay:0.1s">
+      <div class="guidelines">
+        <h4>Guidelines</h4>
+        <ul>
+          <li>Petitions must be relevant to SUNY Niagara students or campus life.</li>
+          <li>Be specific about what you're asking for.</li>
+          <li>Keep it respectful -- no personal attacks.</li>
+          <li>Duplicate petitions may be removed.</li>
+          <li>Admins reserve the right to remove petitions that violate these guidelines.</li>
+        </ul>
+      </div>
+
+      <div class="guidelines" style="margin-top:2px;">
+        <h4>What happens next?</h4>
+        <ul>
+          <li>Your petition goes live immediately.</li>
+          <li>Share the link to collect signatures.</li>
+          <li>The SGA reviews petitions that reach their goal.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  SUNY Niagara County Community College &mdash; Student Government Association
+</footer>
+
+<script src="supabase.js"></script>
+<script>
+function updateCount(inputId, countId, max) {
+  const val = document.getElementById(inputId).value.length;
+  document.getElementById(countId).textContent = val;
+}
+
+async function submitPetition() {
+  const title = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const goal = parseInt(document.getElementById('goal').value);
+  const name = document.getElementById('submitter-name').value.trim();
+  const email = document.getElementById('submitter-email').value.trim();
+  const alertEl = document.getElementById('submit-alert');
+  const btn = document.getElementById('submit-btn');
+
+  alertEl.innerHTML = '';
+
+  if (!title || !description || !name || !email) {
+    alertEl.innerHTML = `<div class="alert alert-error">Please fill in all fields.</div>`;
+    window.scrollTo({ top: alertEl.offsetTop - 100, behavior: 'smooth' });
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alertEl.innerHTML = `<div class="alert alert-error">Please enter a valid email address.</div>`;
+    return;
+  }
+
+  if (isNaN(goal) || goal < 10 || goal > 5000) {
+    alertEl.innerHTML = `<div class="alert alert-error">Goal must be between 10 and 5000.</div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Publishing...';
+
+  // Insert petition
+  const { data: newPetition, error: petErr } = await supabase
+    .from('petitions')
+    .insert({ title, description, goal })
+    .select()
+    .single();
+
+  if (petErr || !newPetition) {
+    alertEl.innerHTML = `<div class="alert alert-error">Failed to publish petition. Please try again.</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Publish Petition';
+    return;
+  }
+
+  // Auto-sign as submitter
+  await supabase.from('signatures').insert({
+    petition_id: newPetition.id,
+    name,
+    email
+  });
+
+  // Redirect to the new petition
+  window.location.href = `petition.html?id=${newPetition.id}&new=1`;
+}
+</script>
+</body>
+</html>

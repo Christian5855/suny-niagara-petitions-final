@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Petitions — SUNY Niagara</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">SUNY <span>Niagara</span> Petitions</a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">All Petitions</a></li>
+    <li><a href="submit.html">Submit a Petition</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <div class="container">
+    <h1>Student<br><em>Petitions</em></h1>
+    <p>Your voice matters. Browse active petitions below, add your signature, or submit a new one for the student body.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:40px; margin-bottom:8px;">
+    <p style="font-size:13px; color:var(--ink-light);" id="petition-count">Loading petitions...</p>
+    <a href="submit.html" class="btn btn-primary">+ New Petition</a>
+  </div>
+
+  <div id="petitions-container">
+    <div class="spinner"></div>
+  </div>
+
+</div>
+
+<footer>
+  SUNY Niagara County Community College &mdash; Student Government Association
+</footer>
+
+<script src="supabase.js"></script>
+<script>
+async function loadPetitions() {
+  const container = document.getElementById('petitions-container');
+  const countEl = document.getElementById('petition-count');
+
+  // Fetch petitions
+  const { data: petitions, error } = await supabase
+    .from('petitions')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    container.innerHTML = `<div class="alert alert-error">Failed to load petitions. Please refresh.</div>`;
+    return;
+  }
+
+  if (!petitions || petitions.length === 0) {
+    countEl.textContent = '0 active petitions';
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <h3>No petitions yet</h3>
+        <p>Be the first to submit one.</p>
+        <br>
+        <a href="submit.html" class="btn btn-primary">Submit a Petition</a>
+      </div>`;
+    return;
+  }
+
+  // Fetch signature counts for all petitions
+  const { data: sigData } = await supabase
+    .from('signatures')
+    .select('petition_id');
+
+  const sigCounts = {};
+  if (sigData) {
+    sigData.forEach(s => {
+      sigCounts[s.petition_id] = (sigCounts[s.petition_id] || 0) + 1;
+    });
+  }
+
+  countEl.textContent = `${petitions.length} active petition${petitions.length !== 1 ? 's' : ''}`;
+
+  const grid = document.createElement('div');
+  grid.className = 'petitions-grid';
+
+  petitions.forEach((p, i) => {
+    const count = sigCounts[p.id] || 0;
+    const pct = Math.min(100, Math.round((count / p.goal) * 100));
+    const date = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const card = document.createElement('a');
+    card.href = `petition.html?id=${p.id}`;
+    card.className = 'petition-card fade-in';
+    card.style.animationDelay = `${i * 0.07}s`;
+    card.innerHTML = `
+      <div class="petition-card-meta">Submitted ${date}</div>
+      <h2>${escapeHtml(p.title)}</h2>
+      <p>${escapeHtml(p.description)}</p>
+      <div class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-label">
+          <span><strong>${count}</strong> signatures</span>
+          <span>Goal: ${p.goal}</span>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+loadPetitions();
+</script>
+</body>
+</html>

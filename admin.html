@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — SUNY Niagara Petitions</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ink);
+    }
+
+    .login-box {
+      background: var(--navy, #112240);
+      background: #1a1a18;
+      border-top: 4px solid var(--red);
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-box h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 30px;
+      letter-spacing: 2px;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .login-box p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 32px;
+    }
+
+    .login-box label {
+      color: rgba(255,255,255,0.6);
+    }
+
+    .login-box input {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.12);
+      color: var(--white);
+    }
+
+    .login-box input:focus {
+      border-color: var(--red);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      margin-top: 24px;
+    }
+
+    .admin-table th {
+      background: var(--ink);
+      color: var(--white);
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .admin-table td {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--bg-dark);
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    .admin-table tr:last-child td { border-bottom: none; }
+
+    .admin-table tr:hover td { background: var(--bg); }
+
+    .petition-title-cell {
+      font-family: 'Lora', serif;
+      font-weight: 600;
+      font-size: 15px;
+      max-width: 320px;
+    }
+
+    .petition-title-cell a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .petition-title-cell a:hover { color: var(--red); }
+
+    .petition-title-cell .preview {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--ink-light);
+      font-weight: 400;
+      margin-top: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    .badge-active { background: #e8f5ef; color: #2d7a57; }
+    .badge-removed { background: #fdf0f0; color: var(--red); }
+
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-bottom: 40px;
+    }
+
+    .stat-box {
+      background: var(--white);
+      padding: 24px 28px;
+      border-left: 3px solid var(--red);
+    }
+
+    .stat-box .num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px;
+      color: var(--ink);
+      letter-spacing: 1px;
+      line-height: 1;
+    }
+
+    .stat-box .lbl {
+      font-size: 12px;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .confirm-box {
+      background: var(--white);
+      padding: 40px;
+      max-width: 420px;
+      width: 90%;
+      border-top: 4px solid var(--red);
+    }
+
+    .confirm-box h3 {
+      font-family: 'Lora', serif;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .confirm-box p { font-size: 14px; color: var(--ink-light); margin-bottom: 28px; }
+
+    .confirm-actions { display: flex; gap: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <h2>Admin Access</h2>
+    <p>SUNY Niagara Petitions — SGA only</p>
+    <div id="login-alert"></div>
+    <div class="form-group">
+      <label for="admin-pass">Password</label>
+      <input type="password" id="admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter') login()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:16px;" onclick="login()">
+      Enter Dashboard
+    </button>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD (hidden until logged in) -->
+<div id="admin-dashboard" style="display:none;">
+
+  <nav>
+    <a href="index.html" class="nav-logo">SUNY <span>Niagara</span> Petitions</a>
+    <ul class="nav-links">
+      <li><a href="index.html">All Petitions</a></li>
+      <li><a href="submit.html">Submit</a></li>
+      <li><a href="admin.html" class="active">Admin</a></li>
+      <li><button class="btn btn-ghost" onclick="logout()">Log Out</button></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Admin<br><em>Dashboard</em></h1>
+      <p>Review and manage all petitions. Delete any that violate the guidelines.</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:48px; padding-bottom:80px;">
+
+    <div class="stats-row" id="stats-row">
+      <div class="stat-box"><div class="num" id="stat-petitions">—</div><div class="lbl">Active Petitions</div></div>
+      <div class="stat-box"><div class="num" id="stat-signatures">—</div><div class="lbl">Total Signatures</div></div>
+      <div class="stat-box"><div class="num" id="stat-goal">—</div><div class="lbl">Goals Reached</div></div>
+    </div>
+
+    <div class="admin-header">
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;">All Petitions</h2>
+      <button class="btn btn-outline" onclick="loadPetitions()" style="font-size:12px;padding:8px 20px;">Refresh</button>
+    </div>
+
+    <div id="admin-content">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay" style="display:none;">
+  <div class="confirm-box">
+    <h3>Delete this petition?</h3>
+    <p id="confirm-title-preview"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-danger" onclick="confirmDelete()">Yes, Delete</button>
+      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="supabase.js"></script>
+<script>
+// ---- CHANGE THIS PASSWORD ----
+const ADMIN_PASSWORD = 'sganc2024';
+// ------------------------------
+
+let pendingDeleteId = null;
+let pendingDeleteTitle = null;
+
+function login() {
+  const pass = document.getElementById('admin-pass').value;
+  const alertEl = document.getElementById('login-alert');
+
+  if (pass === ADMIN_PASSWORD) {
+    sessionStorage.setItem('admin_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-dashboard').style.display = 'block';
+    loadPetitions();
+  } else {
+    alertEl.innerHTML = `<div class="alert alert-error">Incorrect password.</div>`;
+    document.getElementById('admin-pass').value = '';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('admin_auth');
+  window.location.reload();
+}
+
+async function loadPetitions() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div class="spinner"></div>';
+
+  const { data: petitions, error } = await supabase
+    .from('petitions')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    container.innerHTML = `<div class="alert alert-error">Failed to load petitions.</div>`;
+    return;
+  }
+
+  const { data: sigData } = await supabase
+    .from('signatures')
+    .select('petition_id');
+
+  const sigCounts = {};
+  if (sigData) {
+    sigData.forEach(s => {
+      sigCounts[s.petition_id] = (sigCounts[s.petition_id] || 0) + 1;
+    });
+  }
+
+  // Stats
+  const active = petitions.filter(p => p.is_active);
+  const totalSigs = sigData ? sigData.length : 0;
+  const goalsReached = active.filter(p => (sigCounts[p.id] || 0) >= p.goal).length;
+
+  document.getElementById('stat-petitions').textContent = active.length;
+  document.getElementById('stat-signatures').textContent = totalSigs;
+  document.getElementById('stat-goal').textContent = goalsReached;
+
+  if (!petitions || petitions.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>No petitions yet</h3></div>`;
+    return;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'admin-table';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Petition</th>
+        <th>Signatures</th>
+        <th>Goal</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="petitions-tbody"></tbody>
+  `;
+
+  container.innerHTML = '';
+  container.appendChild(table);
+
+  const tbody = document.getElementById('petitions-tbody');
+
+  petitions.forEach(p => {
+    const count = sigCounts[p.id] || 0;
+    const date = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const status = p.is_active
+      ? '<span class="badge badge-active">Active</span>'
+      : '<span class="badge badge-removed">Removed</span>';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="petition-title-cell">
+        <a href="petition.html?id=${p.id}" target="_blank">${escapeHtml(p.title)}</a>
+        <div class="preview">${escapeHtml(p.description)}</div>
+      </td>
+      <td><strong>${count}</strong></td>
+      <td>${p.goal}</td>
+      <td>${status}</td>
+      <td style="white-space:nowrap;color:var(--ink-light)">${date}</td>
+      <td>
+        ${p.is_active
+          ? `<button class="btn btn-danger" onclick="promptDelete('${p.id}', ${JSON.stringify(escapeHtml(p.title))})">Delete</button>`
+          : `<button class="btn" style="background:var(--bg-dark);color:var(--ink-mid);font-size:12px;padding:8px 16px;" onclick="restorePetition('${p.id}')">Restore</button>`
+        }
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function promptDelete(id, title) {
+  pendingDeleteId = id;
+  pendingDeleteTitle = title;
+  document.getElementById('confirm-title-preview').textContent = `"${title}" and all its signatures will be permanently removed.`;
+  document.getElementById('confirm-overlay').style.display = 'flex';
+}
+
+function closeConfirm() {
+  pendingDeleteId = null;
+  pendingDeleteTitle = null;
+  document.getElementById('confirm-overlay').style.display = 'none';
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  closeConfirm();
+
+  const { error } = await supabase
+    .from('petitions')
+    .update({ is_active: false })
+    .eq('id', pendingDeleteId);
+
+  if (error) {
+    alert('Failed to delete petition. Please try again.');
+    return;
+  }
+
+  loadPetitions();
+}
+
+async function restorePetition(id) {
+  const { error } = await supabase
+    .from('petitions')
+    .update({ is_active: true })
+    .eq('id', id);
+
+  if (!error) loadPetitions();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+// Auto-login if session active
+if (sessionStorage.getItem('admin_auth') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-dashboard').style.display = 'block';
+  loadPetitions();
+}
+</script>
+</body>
+</html>

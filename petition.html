@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petition — SUNY Niagara</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .petition-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 40px;
+      padding: 48px 0 80px;
+    }
+
+    .petition-body h2 {
+      font-family: 'Lora', serif;
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 600;
+      line-height: 1.25;
+      margin-bottom: 24px;
+      color: var(--ink);
+    }
+
+    .petition-description {
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--ink-mid);
+      white-space: pre-wrap;
+    }
+
+    .petition-meta-bar {
+      display: flex;
+      gap: 32px;
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin: 32px 0;
+      font-size: 13px;
+      color: var(--ink-light);
+    }
+
+    .petition-meta-bar span strong {
+      display: block;
+      font-size: 22px;
+      color: var(--ink);
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1px;
+    }
+
+    .sign-card {
+      background: var(--white);
+      padding: 32px;
+      border-top: 4px solid var(--red);
+      position: sticky;
+      top: 80px;
+      height: fit-content;
+    }
+
+    .sign-card h3 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .sign-card .sub {
+      font-size: 13px;
+      color: var(--ink-light);
+      margin-bottom: 28px;
+    }
+
+    .signers-list {
+      margin-top: 40px;
+    }
+
+    .signers-list h3 {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .signer-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg-dark);
+      font-size: 14px;
+      animation: fadeIn 0.3s forwards;
+    }
+
+    .signer-avatar {
+      width: 32px;
+      height: 32px;
+      background: var(--ink);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .signer-name { font-weight: 500; }
+    .signer-date { font-size: 12px; color: var(--ink-light); margin-left: auto; }
+
+    @media (max-width: 768px) {
+      .petition-layout {
+        grid-template-columns: 1fr;
+      }
+      .sign-card {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">SUNY <span>Niagara</span> Petitions</a>
+  <ul class="nav-links">
+    <li><a href="index.html">All Petitions</a></li>
+    <li><a href="submit.html">Submit a Petition</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<div id="header-area">
+  <div class="page-header">
+    <div class="container">
+      <p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:12px;">
+        <a href="index.html" style="color:rgba(255,255,255,0.5);text-decoration:none;">&#8592; All Petitions</a>
+      </p>
+      <h1 id="petition-title" style="font-size:clamp(32px,5vw,64px);">Loading...</h1>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="main-content">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<footer>
+  SUNY Niagara County Community College &mdash; Student Government Association
+</footer>
+
+<script src="supabase.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const petitionId = params.get('id');
+
+if (!petitionId) {
+  window.location.href = 'index.html';
+}
+
+let petition = null;
+
+async function loadPetition() {
+  const { data, error } = await supabase
+    .from('petitions')
+    .select('*')
+    .eq('id', petitionId)
+    .eq('is_active', true)
+    .single();
+
+  if (error || !data) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="alert alert-error" style="margin-top:40px;">Petition not found. <a href="index.html">Go back</a></div>`;
+    return;
+  }
+
+  petition = data;
+  document.title = `${data.title} — SUNY Niagara Petitions`;
+  document.getElementById('petition-title').textContent = data.title;
+
+  await renderPetition();
+}
+
+async function renderPetition() {
+  const { data: sigs } = await supabase
+    .from('signatures')
+    .select('name, created_at')
+    .eq('petition_id', petitionId)
+    .order('created_at', { ascending: false });
+
+  const count = sigs ? sigs.length : 0;
+  const pct = Math.min(100, Math.round((count / petition.goal) * 100));
+  const date = new Date(petition.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  const signersHtml = sigs && sigs.length > 0
+    ? sigs.map(s => {
+        const initials = s.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+        const d = new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `
+          <div class="signer-row">
+            <div class="signer-avatar">${escapeHtml(initials)}</div>
+            <span class="signer-name">${escapeHtml(s.name)}</span>
+            <span class="signer-date">${d}</span>
+          </div>`;
+      }).join('')
+    : '<p style="font-size:14px;color:var(--ink-light);padding:12px 0;">No signatures yet. Be the first!</p>';
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="petition-layout">
+      <div class="petition-body fade-in">
+        <h2>${escapeHtml(petition.title)}</h2>
+
+        <div class="petition-meta-bar">
+          <span><strong>${count}</strong>Signatures</span>
+          <span><strong>${petition.goal}</strong>Goal</span>
+          <span><strong>${pct}%</strong>Complete</span>
+          <span style="margin-left:auto;align-self:center;">Submitted ${date}</span>
+        </div>
+
+        <div class="progress-bar" style="height:6px;margin-bottom:32px;">
+          <div class="progress-fill" style="width:${pct}%"></div>
+        </div>
+
+        <p class="petition-description">${escapeHtml(petition.description)}</p>
+
+        <div class="signers-list">
+          <h3>${count} People Have Signed</h3>
+          ${signersHtml}
+        </div>
+      </div>
+
+      <div>
+        <div class="sign-card fade-in" style="animation-delay:0.15s">
+          <h3>Sign This Petition</h3>
+          <p class="sub">Add your name to show your support.</p>
+          <div id="sign-alert"></div>
+          <div class="form-group">
+            <label for="sig-name">Full Name</label>
+            <input type="text" id="sig-name" placeholder="Your full name" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label for="sig-email">Email Address</label>
+            <input type="email" id="sig-email" placeholder="your@email.com">
+          </div>
+          <p style="font-size:12px;color:var(--ink-light);margin-bottom:20px;">Your email won't be displayed publicly. One signature per email.</p>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;" id="sign-btn" onclick="signPetition()">
+            Sign Petition
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function signPetition() {
+  const name = document.getElementById('sig-name').value.trim();
+  const email = document.getElementById('sig-email').value.trim();
+  const alertEl = document.getElementById('sign-alert');
+  const btn = document.getElementById('sign-btn');
+
+  alertEl.innerHTML = '';
+
+  if (!name || !email) {
+    alertEl.innerHTML = `<div class="alert alert-error">Please fill in both fields.</div>`;
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alertEl.innerHTML = `<div class="alert alert-error">Please enter a valid email address.</div>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing...';
+
+  const { error } = await supabase.from('signatures').insert({
+    petition_id: petitionId,
+    name,
+    email
+  });
+
+  if (error) {
+    if (error.code === '23505') {
+      alertEl.innerHTML = `<div class="alert alert-info">You've already signed this petition.</div>`;
+    } else {
+      alertEl.innerHTML = `<div class="alert alert-error">Something went wrong. Please try again.</div>`;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Sign Petition';
+    return;
+  }
+
+  alertEl.innerHTML = `<div class="alert alert-success">Thank you for signing!</div>`;
+  btn.textContent = 'Signed ✓';
+
+  // Refresh signer list
+  await renderPetition();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+loadPetition();
+</script>
+</body>
+</html>
