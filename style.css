@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
 :root {
-  --bg: #f7f4ef;
-  --bg-dark: #ede9e1;
-  --ink: #1a1a18;
-  --ink-mid: #3d3d38;
-  --ink-light: #7a7a72;
-  --red: #c0392b;
-  --red-dark: #96281b;
-  --gold: #b8860b;
+  --bg: #f5f6fa;
+  --bg-dark: #e8eaf2;
+  --ink: #0d1f3c;
+  --ink-mid: #2a3f5f;
+  --ink-light: #6b7fa3;
+  --red: #b8960c;
+  --red-dark: #8f7209;
+  --gold: #b8960c;
   --white: #ffffff;
-  --border: #d4cfc5;
+  --border: #cdd4e8;
   --shadow: rgba(26,26,24,0.1);
 }
 
